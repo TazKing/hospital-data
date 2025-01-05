@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Info</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+        }
+        input {
+            margin: 10px 0;
+            padding: 8px;
+            width: 300px;
+        }
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+        }
+        #printBtn {
+            margin-top: 20px;
+            background-color: #2196F3;
+            display: none; /* Initially hidden */
+        }
+        #addNewInfoForm {
+            display: none; /* Form hidden by default */
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to User Info</h1>
+    
+    <h3>Enter Your Details</h3>
+    <form id="userForm">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="code">Unique Code:</label>
+        <input type="text" id="code" name="code" placeholder="Enter Code (leave blank for auto-gen)" required>
+
+        <button type="submit">Get Information</button>
+    </form>
+
+    <!-- Button to show the Add Information form -->
+    <button id="showAddInfoFormBtn">Add Your Information</button>
+
+    <!-- Form for adding new user information -->
+    <div id="addNewInfoForm">
+        <h3>Fill in Your Information</h3>
+        <form id="addInfoForm">
+            <label for="nameNew">Name:</label>
+            <input type="text" id="nameNew" name="nameNew" required>
+
+            <label for="codeNew">Unique Code:</label>
+            <input type="text" id="codeNew" name="codeNew" disabled placeholder="Code will be auto-generated">
+
+            <label for="age">Age:</label>
+            <input type="number" id="age" name="age" required>
+
+            <label for="gender">Gender:</label>
+            <input type="text" id="gender" name="gender" required>
+
+            <label for="height">Height (in cm):</label>
+            <input type="number" step="0.1" id="height" name="height" required> <!-- Added step="0.1" for decimal input -->
+
+            <label for="phoneNumber">Phone Number:</label>
+            <input type="text" id="phoneNumber" name="phoneNumber" required>
+
+            <label for="bloodType">Blood Type:</label>
+            <input type="text" id="bloodType" name="bloodType" required>
+
+            <button type="submit">Save New User</button>
+        </form>
+    </div>
+
+    <div id="result"></div>
+
+    <button id="printBtn">Print Slip</button>
+
+    <script>
+        const userForm = document.getElementById('userForm');
+        const addInfoForm = document.getElementById('addInfoForm');
+        const resultDiv = document.getElementById('result');
+        const printBtn = document.getElementById('printBtn');
+        const showAddInfoFormBtn = document.getElementById('showAddInfoFormBtn');
+        const addNewInfoForm = document.getElementById('addNewInfoForm');
+        const codeNewInput = document.getElementById('codeNew');
+
+        // Handle existing user info retrieval
+        userForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const name = document.getElementById('name').value;
+            let code = document.getElementById('code').value;
+            if (!code) {
+                code = generateUniqueCode(); // Generate code if not provided
+            }
+
+            const response = await fetch('/api/users/getUser', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, code })
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                const user = data.data;
+                resultDiv.innerHTML = `
+                    <h3>User Info:</h3>
+                    <p><strong>Name:</strong> ${user.name}</p>
+                    <p><strong>Code:</strong> ${user.code}</p>
+                    <p><strong>Age:</strong> ${user.age}</p>
+                    <p><strong>Gender:</strong> ${user.gender}</p>
+                    <p><strong>Height:</strong> ${user.height}</p>
+                    <p><strong>Phone Number:</strong> ${user.phoneNumber}</p>
+                    <p><strong>Blood Type:</strong> ${user.bloodType}</p>
+                `;
+                printBtn.style.display = 'inline-block'; // Show the print button
+            } else {
+                resultDiv.innerHTML = `<p style="color: red;">${data.message}</p>`;
+            }
+        });
+
+        // Handle adding new user info directly
+        addInfoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const nameNew = document.getElementById('nameNew').value;
+            const codeNew = generateUniqueCode(); // Auto-generate the code each time
+            document.getElementById('codeNew').value = codeNew; // Display the generated code
+            const age = document.getElementById('age').value;
+            const gender = document.getElementById('gender').value;
+            const height = document.getElementById('height').value;
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const bloodType = document.getElementById('bloodType').value;
+
+            const addResponse = await fetch('/api/users/addUser', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: nameNew, code: codeNew, age, gender, height, phoneNumber, bloodType })
+            });
+
+            const addData = await addResponse.json();
+            resultDiv.innerHTML = `<p>${addData.message}</p>`;
+            printBtn.style.display = 'inline-block'; // Show the print button after adding details
+        });
+
+        // Toggle Add Information form visibility
+        showAddInfoFormBtn.addEventListener('click', () => {
+            if (addNewInfoForm.style.display === 'none' || addNewInfoForm.style.display === '') {
+                addNewInfoForm.style.display = 'block'; // Show the form
+            } else {
+                addNewInfoForm.style.display = 'none'; // Hide the form
+            }
+        });
+
+        // Print slip functionality
+        printBtn.addEventListener('click', () => {
+            const userInfo = resultDiv.innerHTML;
+            const printWindow = window.open('', '', 'width=600,height=400');
+            printWindow.document.write('<html><head><title>Print Slip</title></head><body>');
+            printWindow.document.write(userInfo);
+            printWindow.document.write('<br><button onclick="window.print()">Print</button>');
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+        });
+
+        // Function to generate a unique 5-digit code with numbers and special character "#"
+        function generateUniqueCode() {
+            const characters = '0123456789#';
+            let code = '';
+            for (let i = 0; i < 5; i++) {
+                const randomIndex = Math.floor(Math.random() * characters.length);
+                code += characters[randomIndex];
+            }
+            return code;
+        }
+    </script>
+</body>
+</html>
